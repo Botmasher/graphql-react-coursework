@@ -68,19 +68,101 @@ query {
 	- so what is this schema?
 
 ## 8. GraphQL Schemas
-- 
+- key word in that error is "middleware"
+- `app.use` is how we wire up middleware
+	- we hooked up a `graphiql` option
+	- but we didn't hook up a schema!
+- schema
+	- we know that users are associated with a company and position
+	- GraphQL doesn't know this
+	- so it needs a schema file!
+- create a `/schema/` folder and a `schema.js`
+- tell it what things have and how they are related
+	- we have idea of a user
+	- a user has an id and a firstName
+	- etc.
 
 ## 9. Writing a GraphQL Schema
-- 
+- this code looks crazy and tough to reproduce
+- BUT it's very repetitive
+- steps:
+	1. import the graphql library (NOT the Express one)
+	2. destructure properties
+	3. tell our schema about users with a new object `UserType`
+		- required to have a `name`
+		- required to have a `fields`, extremely important because it tells what properties user has
+		- set value of each property in `fields` to an object and fill in a `type` property
+		- `type` should be types imported from GraphQL
+	4. go back up and import the used types e.g. `GraphQLString`
 
 ## 10. Root Queries
-- 
+- this is where patterns start looking strange
+- finding user with id is tough for GraphQL
+	- give it a **root query**: an instruction to jump into our data
+	- root query is an entry point into our data
+- adding to above steps:
+	5. declare root query const
+	6. give it `name: 'RootQueryType'`
+	7. give it some `fields`
+		- `type` of the object we're interested in (user)
+		- `args` specifying required arguments, like `id`
+		- `resolve(parentValue, args)` function
+- that resolve is super important because it's where we go into the db and find the actual data
+	- so far we've only told the file what the data looks like
+	- resolve will reach out and grab data
+	- `parentValue` notoriously doesn't get used
+	- `args` is an object containing the result of grabbing data with the arguments we requested
 
 ## 11. Resolving with Data
-- 
+- let's start by practicing with hard-coded data
+	8. introduce a const with an array of users
+	9. require lodash: `const _ = require('lodash');`
+	10. in resolve, use lodash to find a user matching that id
+- get this ready to test out in client
+	11. import `GraphQLSchema`
+		- this takes a root query and returns a schema instance
+	12. instantiate a new GraphQL Schema at bottom of file, passing in the root query
+	13. assign that instance to `module.exports`
+	14. import schema over in `server.js`
+	15. add schema to the middleware in `app.use`
+	16. restart server and navigate to the route to see the GraphiQL interface
 
 ## 12. The GraphiQL Toolkit
-- 
+- this tool is provided by GraphQL Express lib
+- left side has area to enter query
+- running with the button will show results on the right
+- documentation explorer panel populated
+	- very useful for understanding application data
+	- removes much need to read schema
+- schema as 50% of what's happening with GraphQL
+- the rest is writing queries
+- try getting our user
+```
+{
+	user(id: "23") {
+		id,
+		firstName,
+		age
+	}
+}
+```
+- these look like but are not JavaScript
+- what it's doing
+	- look through users
+	- find me a user with `id` of `"23"`
+	- once the user is found, return these properties
+	- note that values match the expected types defined in the schema
+- look at schema side-by-side while running query
+	- query is sent to `RootQueryType`
+	- the root query found the `user` key (the one we passed) inside of `fields`
+	- it looks for id arg
+	- it plucks off that object and returns a raw JS object
+	- you see that object on the right in the GraphiQL interface
+- note we can just get whatever properties we want and avoid overfetching
+- what about user that does not exist?
+	- just returns an object with `"user": null`
+- what if we don't pass the filter?
+	- we'll get expected name error (the name of an argument, here id)
 
 ## 13. A Realistic Data Source
 - 
