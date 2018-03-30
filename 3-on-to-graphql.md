@@ -165,13 +165,89 @@ query {
 	- we'll get expected name error (the name of an argument, here id)
 
 ## 13. A Realistic Data Source
-- 
+- in our schema we're hardcoding our data
+- let's use "live, dynamic data" and serve data to our app
+- not a full db but let's do a bit better
+- current setup
+	1. db
+	2. Express/GraphQL server
+	3. client running GraphiQL interface
+	- smaller projects often head towards this setup
+- large setup
+	1. multiple databases behind
+	2. multiple outside servers along with
+	3. outside API servers, all serving
+	4. Express/GraphQL server
+	5. out to the client
+	- many internal systems
+	- GraphQL is served as a "proxy of sorts" for putting data together for user
+	- here the GraphQL is making requests to some outside servers with their own databases
+- we'll try out both approaches
+- for this app let's get some outside API data
+- steps:
+	1. user makes query
+	2. GraphQL sends query outside
+	3. API gets the data and sends it back
+- JSON Server allows you to mock up an API quickly
+	1. create a `db.json` file
+	2. add data to that file
+	3. start up the server
+	- `npm install --save json-server`
+	- then make the db file
+	- then in `package.json` add to `"scripts"` the pair `"json:server": "json-server --watch db.json"`
+	- now you can run it as a completely separate process with `npm run json:server`
+	- you can visit `localhost:3000` to see the server and even visit paths based on keys like `user/23`
+- so now how to fetch data about one user from our API using GraphQL and send it back to the browser?
 
 ## 14. Async Resolve Functions
-- 
+- JSON Server clarifications
+	- visiting `/user` gives us array of all users
+	- visiting `/user/23` gives us the object for one user
+	- note this is a completely separate port from the GraphiQL instance (distinct servers)
+- in `RootQuery` the `resolve` is instantly returning a user
+	- let's return an async promise instead
+	1. GraphQL will reach out to the other server and request the data
+	2. server will look for that data while GraphQL waits
+	3. GraphQL will wait for the promise to resolve
+	4. then it will grab the data and send it back to the client
+- use fetch or axios to make HTTP requests
+	- instructor prefers axios
+	- `npm install --save axios`
+- no more `lodash` since we're not going through the static users demo data anymore
+- but we do need an axios import: `const axios = require('axios');`
+- delete the static list of users too
+- replace `resolve` with request to our mockup JSON Server
+	- `return axios.get(``http://localhost:3000/users/${args.id}``);`
+	- then chain `response => console.log(response);` to see the response object
+	- axios oddity with GraphQL: response object will have `data` property nested onto it with data inside
+	- GraphQL does not know data will be nested that way, so pare it down and return `response.data`
+	- in the future wrap axios with a request handler to avoid repeating these steps
+- now make the same query in the GraphiQL interface for user 23 and user 40
 
 ## 15. Nodemon Hookup
-- 
+- you keep having to restart the server between changes
+- nodemon watches our project files and automatically restarts when they change
+- this makes sure your server is always running
+- `npm install --save nodemon`
+- add it to your package scripts: `"dev": "nodemon server.js"`
+- from now on run your server with `npm run dev` to see nodemon watching
 
 ## 16. Company Definitions
-- 
+- time to work on the next query now that our server is more dev friendly
+- hook up relating company to user
+	- need to introduce idea of company
+	- every company has name, id, description
+	- relate user to company by adding companyId to user
+- in `db.json` add a couple companies and relate users to them
+	- add to a new `"company"` scheme
+	- associate it to an array of objects like `{"id": 1, "name": "Zompany", "description": "all the stuff"}`
+	- add one more user so that one company has two users
+	- set up relationship between all companies
+	- add in `"companyId"` property for each user
+- open your browser to a new tab and go to your JSON Server
+	- run `/users` and `/companies`
+	- note that I updated the project to pluralize both here
+	- now check out `/companies/1/users` to see all users working at company 1!
+	- note that this relation is being done behind the scenes
+	- it's another cool thing about JSON Server!
+- next time we'll move to company type
