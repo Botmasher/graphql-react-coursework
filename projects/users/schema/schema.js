@@ -13,6 +13,33 @@ const users = [
 	{ id: '24', firstName: 'Tsag', age: 100 }
 ];
 
+const CompanyType = new GraphQLObjectType({
+	name: 'Company',
+	fields: {
+		id: {
+			type: GraphQLString
+		},
+		name: {
+			type: GraphQLString
+		},
+		description: {
+			type: GraphQLString
+		}
+	}
+});
+
+const HobbyType = new GraphQLObjectType({
+	name: 'Hobby',
+	fields: {
+		id: {
+			type: GraphQLString
+		},
+		name: {
+			type: GraphQLString
+		}
+	}
+});
+
 const UserType = new GraphQLObjectType({
 	name: 'User',
 	fields: {
@@ -24,6 +51,20 @@ const UserType = new GraphQLObjectType({
 		},
 		age: {
 			type: GraphQLInt
+		},
+		company: {
+			type: CompanyType,
+			resolve(parentValue, args) {
+				return axios.get(`http://localhost:3000/company/${parentValue.companyId}`)
+					.then(res => res.data);	// the company object with this company.id
+			}
+		},
+		hobby: {
+			type: HobbyType,
+			resolve (parentValue, args) {
+				return axios.get(`http://localhost:3000/hobby/${parentValue.hobbyId}`)
+					.then(res => res.data);
+			}
 		}
 	}
 });
