@@ -100,16 +100,98 @@ resolve(parentValue, args) {
 		- keep using a graph picture and get it ingrained
 
 ## 20. Multiple RootQuery Entry Points
--
+- cannot yet just ask for a company because there's no `RootQueryType` field for the company
+	- so far only allows going to a user
+	- we have to get to a user then a company
+- so let's go from a root query directly to a company
+	- add to root query `fields`
+	- `company` should be sibling to `user`
+	- we want the same kind of structure with `args` and a `resolve()`
+```JavaScript
+...
+	company: {
+		type: CompanyType,
+		args: { id: { type: GraphQLString } },
+		resolve(parentValue, args) {
+			return axios.get(`http://localhost:3000/companies/${args.id}`)
+				.then(resp => resp.data);
+		}
+	}
+```
+- remember you will need to refresh your schema
+- check terminal for errors
 
 ## 21. Bidirectional Relations
--
+- link companies and users the other way
+- now that we have company in root query we don't need to ask for user first
+- but asking for users of a company will err because we don't have that relationship
+```JavaScript
+{
+	company(id: "1") {
+		users {
+			firstName
+		}
+	}
+}
+```
+- fix that we can go from user to company but not company to user
+	- every edge going to a vertex needs to be set up manually
+	- we should get back a list of many users (company has many users)
+- revisit json server and get a list of all users: `localhost:3000/company/1/user`
+	- this is the simple json server knowing how to search through keys
 
 ## 22. More on Bidirectional Relations
-- 
+- we can teach `CompanyType` how to go from one company to array of users
+	- `type`, `args` and `resolve()`
+	- we don't want a `UserType`, we want a `GraphQLList` of users!
+	- make sure to grab the list type when destructuring from the required `graphql`
+```JavaScript
+const CompanyType = new GraphQLObjectType({
+	name: 'Company',
+	fields: {
+		...
+		users: {
+			type: new GraphQLList(UserType)
+		}
+	}
+});
+```
+- next add `resolve()`
+	- no need for args because we're going right for the users who have this company id
+	- we can just work with `parentValue` since that's the current company
+```JavaScript
+const CompanyType = new GraphQLObjectType({
+	name: 'Company',
+	fields: {
+		...
+		users: {
+			type: new GraphQLList(UserType),
+			resolve(parentValue, args) {
+				return axios.get(`http://localhost:3000/companies/${parentValue.id}/users`)
+					.then(res => res.data);
+			}
+		}
+	}
+});
+```
+- we get this exception: `ReferenceError: UserType is not defined`
+	- what happened?
 
 ## 23. Resolving Circular References
--
+- `CompanyType` points to a user but `UserType` is defined below it
+	- can't do the opposite because it also points to a company
+	- this creates a circular reference in the dependencies
+- how to resolve this order of operations problem?
+	- instead turn `fields` into an arrow function
+	- this function simply returns the object with all the current keys
+	- GraphQL will call this function and run, storing those fields
+	- this is a workaround for JS using closures
+- with that change, queries that get a company's users should work
+- try this query: grab a company's users, then each user's company's name
+	- this nests the same data getting nested
+	- these kinds of circular relations can go as far as we want
+	- (keep nesting company's users' company's users' company's users' ...)
+- the graph between users <-> companies is now connected
 
 ## 24. Query Fragments
 -
