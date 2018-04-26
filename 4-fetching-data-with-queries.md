@@ -194,16 +194,223 @@ const CompanyType = new GraphQLObjectType({
 - the graph between users <-> companies is now connected
 
 ## 24. Query Fragments
--
+- syntax of the queries, including useful tips
+- you might see queries unnamed (no behavior change) or named
+```JavaScript
+query findCompany {
+	company(id: "1"){
+		id
+		name
+		description
+	}
+}
+```
+- this helps for reusing throughout codebase
+- opening curly braces scope what's sent to `RootQueryType`
+- can't use same type name twice without renaming keys
+	- it's clear if you look at results, as the key is renamed
+```JavaScript
+query findCompany {
+	c1: company(id: "1"){
+		id
+		name
+		description
+	}
+	c2: company(id: "1"){
+		id
+		name
+		description
+	}
+}
+```
+- query fragments avoid repetitive lists of properties
+	- define a named fragment on that type
+	- use spread operator to get those properties
+```JavaScript
+{
+	company(id: "1") {
+		...companyDetails
+	}
+}
+fragment companyDetails on Company {
+	id
+	name
+	description
+}
+```
 
 ## 25. Introduction to Mutations
-- 
+- so far it's just querying and reading
+- now let's change the data using **mutations**
+	- notoriously challenging in GraphQL
+	- but we can do this
+- remember we have JSON server with `users` and `companies`
+	- we don't need to worry about the JSON server
+	- we need to make sure schema works with interactions
+- query schema that relates to Root Query then User and Company
+- similar setup for a mutation schema that relates to Mutations which does things like addUser and deleteUser
+	- completely separate object in our app to do this
+	- structure it just like another object
+	- give it fields to describe operations it will take
+	- careful: `type` is the type of data resolve will return!
+	- careful: sometimes mutations operate on different types than they return
+	- `args` will be properties we assume will be passed in
+```JavaScript
+...
+const mutation = new GraphQLObjectType({
+	name: 'Mutation',
+	fields: {
+		addUser: {
+			type: UserType,
+			args: {
+				firstName: { type: GraphQLString },
+				age: { type: GraphQLInt },
+				companyId: { type: GraphQLString }
+			},
+			resolve() {}
+		}
+	}
+});
+
+module.exports = new GraphQLSchema({
+	query: RootQuery
+});
+```
 
 ## 26. NonNull Fields and Mutations
-- 
+- let's keep going with `addUser` mutation
+	- anyone calling this mutation should pass in our `args` 
+	- required validation can be wrapped with `new GraphQLNonNull()` around arg type
+- post request in resolve, passing along args
+- add the mutation to the exports `mutation` property
+```JavaScript
+const { ..., GraphQLNonNull } = graphql; 	// in top requires
+
+...
+
+const mutation = new GraphQLObjectType({
+	name: 'Mutation',
+	fields: {
+		addUser: {
+			type: UserType,
+			args: {
+				firstName: { type: new GraphQLNonNull(GraphQLString) },
+				age: { type: new GraphQLNonNull(GraphQLInt) },
+				companyId: { type: GraphQLString }
+			},
+			resolve(parentValue, { firstName, age }) {
+				return axios.post(`http://localhost:3000/users`, { firstName, age })
+					.then(res => res.data);
+			}
+		}
+	}
+});
+
+module.exports = new GraphQLSchema({
+	query: RootQuery,
+	mutation
+});
+```
+- calling the mutation
+	- different syntax
+	- write keyword `mutation` then open braces
+	- call it with arguments
+	- you *must* ask for the properties coming off of it
+	- note it will automatically get an assigned `id`
+```JavaScript
+mutation {
+	addUser(firstName: "Beady", age: 200) {
+		id
+		firstName
+		age
+	}
+}
+```
 
 ## 27. Do It Yourself - Delete Mutation!
--
+- add a delete user mutation
+- it's another field on the mutation object
+- it's different though
+	- try it on your own first building off of `addUser`
+	- one tip: `axios` request should be an `axios.delete(``uri/users/{$userId}``)`
+	- the response back should be `null`
+	- my shot at a solution worked! how's yours doing?
+```JavaScript
+	...
+	deleteUser: {
+		type: UserType,
+		args: {
+			id: { type: new GraphQLNonNull(GraphQLString) }
+		},
+		resolve(parentValue, args) {
+			return axios.delete(`http://localhost:3000/users/${args.id}`)
+				then(res => res.data);
+		}
+	}
+	...
+```
+- instructor's solution:
+	- consider that it's a sibling to `addUser`
+	- also consider that `args` should just take in the `id`
+	- type should be a user
+	- args object will just be the id of record to delete
+	- use an axios delete statement with template to pass id through uri
+	- use ES6 destructuring for the args id (not done in my solution)
+- running the mutation in GraphiQL
+	- should return null
+	- once JSON server runs the delete, it doesn't pass back user details
+	- GraphQL is left with empty hands because it still expects something back
+	- it does not have the ability to do otherwise
+	- when you call mutation you need to put the property you want off of it
+```JavaScript
+mutation {
+	deleteUser(id: "xyz123") {
+		id
+	}
+}
+```
 
 ## 28. Do It Yourself - Edit Mutation!
--
+- last mutation for now
+- let's edit a user
+	- take in id
+	- take in properties to update
+	- make the update on JSON server
+	- get it back to GraphQL
+- what's the difference between `PUT` and `PATCH`?
+	- we've done axios `GET`, `POST`, `DELETE`
+	- `PUT` completely replaces some record on remote database (overwriting)
+	- `PATCH` only overwrites properties contained in the request body
+	- use a `PATCH` request when possible: `axios.patch(uri, { params })`
+- so add `editUser` as a field on the mutations object
+	- mine worked!
+```JavaScript
+...
+	editUser: {
+		type: UserType,
+		args: {
+			id: { type: new GraphQLNonNull(GraphQLString) },
+			firstName: { type: GraphQLString },
+			age: { type: GraphQLInt },
+			companyId: { type: GraphQLString }
+		},
+		resolve(parentValue, args) {
+			return axios.patch(`http://localhost:3000/users/${args.id}`, {args})
+				.then(res => res.data);
+		}
+	}
+...
+```
+- instructor's solution:
+	- add the type, args and resolve (just like nearly every other mutation)
+	- expect a user out of this mutation (that's the type)
+	- args may only update some properties
+		- require id
+		- all others optional 
+	- resolve won't use `parentValue` again
+	- but resolve will use the entire args object
+- now you can call the edit user mutation
+	- pass it whichever arguments you want to provide
+	- autocompletes in the body are populated because we declared return as user type
+- eventually we should split schema into different small files
+	- BUT famously FB has their entire schema in one file but it's a different syntax
