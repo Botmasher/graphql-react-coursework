@@ -54,7 +54,50 @@
   - visit `localhost:4000` and visit `graphql` endpoint
 
 ## Working Through the Schema
--
+- walk through schema already set up in the project
+- unlike REST, it's easier to use an interface instead of looking at code directly
+  - automatically generated GraphiQL documentation
+  - Documentation Explorer panel is great for walking onto a new project
+- walk through from the RootQuery down to songs, song and lyric
+- existing mutations are also listed for adding song, lyrics, liking lyrics, deleting song
+- current goal: add one song and add one lyric to it
+  - create mutation to add a song
+  - get back the long globally unique id
+  - then use `addLyricToSong` to add lyrical content to the song with that id
+  - me: NOTE the given setup errs trying to push lyric in `song.js`; rewritten with spread instead of array mutation
+```
+mutation {
+  addSong(title: "Dogs Do Dance") {
+    id
+  }
+}
+// then with the returned id
+mutation {
+  addLyricToSong(songId: "added-song-id", content: "Dihddih doggy is a dog dog diggy") {
+    id
+  }
+}
+```
+- now write a query to read the new lyrics
+  - this is not a mutation so remove the mutation keyword then run a query
+```
+{
+  songs {
+    id,
+    title,
+    lyrics {
+      content
+    }
+  }
+}
+```
+- now go check your mlab database to see the data collection
+  - this is a place you can manage records if you make any GraphQL mistakes
+  - it's also where you can simply browse through data in your db
+- grasp on the relationships in our db
+  - we can have many songs
+  - each song can have many lyrics associated with it
+- now it's time to work on the client side of our app
 
 ## Apollo Client Setup
 -
