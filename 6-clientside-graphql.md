@@ -100,10 +100,32 @@ mutation {
 - now it's time to work on the client side of our app
 
 ## Apollo Client Setup
--
+- we'll be wrapping our React app with Apollo provider
+- open `index.js` in the Lyrical project's `./client` folder
+  - this has the root app component
+- the Apollo provider will interact with the store
+  - the store communicates directly with the GraphQL server
+  - the store is our client-side data for the app
+- Apollo store does not care that we are using React
+  - we won't need to do much with it other than create it
+- Apollo provider takes data from store and injects into React app
+  - this is where we will do most of our setup
+- import the ApolloClient and ApolloProvider in `index.js`
+  - the ApolloClient library is for any framework but we're using it in React
+  - note that the `react-apollo` package is the compatability lib
+  - ApolloProvider draws heavily on Redux
+- create a new ApolloClient: `const client = new ApolloClient({});`
+  - caution: the created ApolloClient instance _assumes_ that a `graphql` endpoint is available as set up in the schema
+  - double check that the project's `server/schema` does indeed have that endpoint
+  - deviating from the assumptions means adding properties to that empty object in `new ApolloClient({})`
+- wrap the `Root` component in `ApolloProvider` passing the client attribute
+  - this is just a React component that we'll be passing data to as prop
+  - the prop we pass it is a reference to the Apollo store
+- the way Provider and Client interact will be something we will work to understand
+- compared to Relay there's a lot less setup with Apollo
 
 ## React Component Design
--
+- 
 
 ## GQL Queries in React
 -
