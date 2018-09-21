@@ -125,10 +125,83 @@ mutation {
 - compared to Relay there's a lot less setup with Apollo
 
 ## React Component Design
-- 
+- review: we're using both Apollo Client and React Apollo libraries
+  - keep in mind the differences between them
+- try writing a query to fetch a list of songs from the server
+- app structure
+  - song index page: list the different songs
+  - song detail page: give info for a single song
+- components
+  - a `SongList` component
+  - a `SongDetail` component with
+    - `LyricList` for all lyrics associated with the song
+    - `LyricCreate` component for adding new lyric to song
+  - eventually we will want a component for creating a song, too
+- so create those components inside a `client/components/` folder
+- let's work on a `SongList.js`
+  - add the React boilerplate and render a test div
+  - import `SongList` in the main `index.js` and render it in the root component
+- you should now see your `SongList` showing up in the browser
 
 ## GQL Queries in React
--
+- let's now get that list of songs to the user
+- checklist to get data into the React component we created
+  - [ ] identify data required (which data do we actually need?)
+  - [ ] write query in GraphiQL (practice) and in component file
+  - [ ] bond query and component
+  - [ ] access the data
+- checkbox one keeps us from overfetching data
+  - this is part of what GraphQL is promising after all
+- checkboxes two and three help us create and apply a query
+- checkbox four just makes sure we have our data
+  - we don't need to do AJAX or any other work
+  - GraphQL thanks to Apollo will just let us access data once we have a query
+- for our Lyrical app
+  - we just need the song titles, nothing about the artists
+  - let's write out a query in GraphiQL for those titles
+```
+{
+  songs {
+    title
+  }
+}
+```
+  - then the query inside our component
+  - import `graphql-tag` helper to handle writing queries
+```JavaScript
+import gql from 'graphql-tag';
+...
+const query = gql`{
+  {
+    songs {
+      title
+    }
+  }
+}`;
+```
+- this (called by convention `gql`) will be a major tool for the rest of the course
 
 ## Bonding Queries with Components
--
+- so far we have defined a query but nothing is being executed
+- now onto steps three and four of the checklist above
+- import a helper from React Apollo
+  - this bonded our server with the app when we got the provider
+  - this is our glue layer, so we'll use it here too
+  - use a curried function much like Redux `connect`
+```JavaScript
+import { graphql } from 'react-apollo';
+...
+export default graphql(query)(SongList);
+```
+- this will execute our query once the component is rendered
+  - component renders, then
+  - query is issued to the backend server, then
+  - (server work happens), then
+  - query completes, then
+  - component rerenders
+- where do we access that returned data?
+  - it's placed inside the component's `this.props`
+  - if we log on first render we can see `this.props.data` that's `undefined`
+  - after the query finishes we can see `this.props.data.songs.title`
+  - our component shouldn't expect that `data.songs` is always available!
+- next we'll move to making sure we can render one song
